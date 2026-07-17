@@ -22,8 +22,8 @@
 #include "dma.h"
 #include "fdcan.h"
 #include "lwip.h"
-#include "memorymap.h"
 #include "tim.h"
+#include "usart.h"
 #include "usb_device.h"
 #include "gpio.h"
 
@@ -114,6 +114,7 @@ int main(void)
   MX_TIM1_Init();
   MX_FDCAN1_Init();
   MX_FDCAN3_Init();
+  MX_UART7_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
