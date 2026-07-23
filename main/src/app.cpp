@@ -2,17 +2,37 @@
 #include "main.h"
 #include "cmsis_os.h"
 #include "socket.h"
+#include "usb_device.h"
 #include "lwip.h"
+
+#include "FullColorLED.hpp"
+#include "CANFD.hpp"
 
 #define F7_ADDR "192.168.10.103"
 #define PC_ADDR "192.168.10.102"
 #define F7_PORT 4001
 #define PC_PORT 4001
 
+FullColorLED led{&htim1, TIM_CHANNEL_1};
+CANFD* canfd1;
+CANFD* canfd2;
+
+
+
 extern "C" void StartDefaultTask(void const * argument)
 {
   /* init code for LWIP */
   MX_LWIP_Init();
+  MX_USB_DEVICE_Init();
+  
+  canfd1 = new CANFD(&hfdcan1);
+	canfd1->start();
+
+  canfd2 = new CANFD(&hfdcan3);
+	canfd2->start();
+
+  led.start();
+  led.set_rgb(255, 255, 255);
 
   /* USER CODE BEGIN 5 */
   //データを格納する配列
@@ -41,6 +61,11 @@ extern "C" void StartDefaultTask(void const * argument)
   for(;;)
   {
     n = lwip_recvfrom(socket, (uint8_t*) rxbuf, sizeof(rxbuf), (int) NULL, (struct sockaddr*) &rxAddr, &len); //受信処理(blocking)
+    CANFD_Frame test;
+	  test.id=10;
+	  test.size = 32;
+	  memset(test.data, 0, 64);
+	  canfd1->tx(test);
     lwip_sendto(socket, (uint8_t*) txbuf, sizeof(txbuf), 0, (struct sockaddr*) &txAddr, sizeof(txAddr)); //受信したら送信する
   }
   /* USER CODE END 5 */

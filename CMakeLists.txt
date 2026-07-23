@@ -15,6 +15,7 @@ set(CMAKE_C_EXTENSIONS ON)
 set(Application_Src
     main/src/app.cpp
     main/src/CANFD.cpp
+    main/src/FullColorLED.cpp
 )
 
 set(Include_Dirs
