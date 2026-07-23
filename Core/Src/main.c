@@ -22,6 +22,7 @@
 #include "dma.h"
 #include "fdcan.h"
 #include "lwip.h"
+#include "memorymap.h"
 #include "tim.h"
 #include "usart.h"
 #include "usb_device.h"
