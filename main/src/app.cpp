@@ -4,8 +4,8 @@
 #include "socket.h"
 #include "lwip.h"
 
-#define F7_ADDR "192.168.21.111"
-#define PC_ADDR "192.168.21.100"
+#define F7_ADDR "192.168.10.103"
+#define PC_ADDR "192.168.10.102"
 #define F7_PORT 4001
 #define PC_PORT 4001
 
