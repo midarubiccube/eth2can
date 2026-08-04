@@ -29,6 +29,7 @@
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
+typedef StaticTask_t osStaticThreadDef_t;
 /* USER CODE BEGIN PTD */
 
 /* USER CODE END PTD */
@@ -54,6 +55,18 @@ const osThreadAttr_t defaultTask_attributes = {
   .stack_size = 6000 * 4,
   .priority = (osPriority_t) osPriorityBelowNormal3,
 };
+/* Definitions for ReceiveTask */
+osThreadId_t ReceiveTaskHandle;
+uint32_t ReceiveTaskBuffer[ 512 ];
+osStaticThreadDef_t ReceiveTaskControlBlock;
+const osThreadAttr_t ReceiveTask_attributes = {
+  .name = "ReceiveTask",
+  .cb_mem = &ReceiveTaskControlBlock,
+  .cb_size = sizeof(ReceiveTaskControlBlock),
+  .stack_mem = &ReceiveTaskBuffer[0],
+  .stack_size = sizeof(ReceiveTaskBuffer),
+  .priority = (osPriority_t) osPriorityHigh,
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -61,6 +74,7 @@ const osThreadAttr_t defaultTask_attributes = {
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
+void StartReceiveTask(void *argument);
 
 extern void MX_LWIP_Init(void);
 extern void MX_USB_DEVICE_Init(void);
@@ -108,6 +122,9 @@ void MX_FREERTOS_Init(void) {
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
+  /* creation of ReceiveTask */
+  ReceiveTaskHandle = osThreadNew(StartReceiveTask, NULL, &ReceiveTask_attributes);
+
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
@@ -139,6 +156,24 @@ __weak void StartDefaultTask(void *argument)
     osDelay(1);
   }
   /* USER CODE END StartDefaultTask */
+}
+
+/* USER CODE BEGIN Header_StartReceiveTask */
+/**
+* @brief Function implementing the ReceiveTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartReceiveTask */
+__weak void StartReceiveTask(void *argument)
+{
+  /* USER CODE BEGIN StartReceiveTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartReceiveTask */
 }
 
 /* Private application code --------------------------------------------------*/

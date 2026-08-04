@@ -16,8 +16,43 @@
 FullColorLED led{&htim1, TIM_CHANNEL_1};
 CANFD* canfd1;
 CANFD* canfd2;
+int socket;
+bool socket_ready = false;
 
+struct sockaddr_in rxAddr,txAddr;
 
+#pragma pack(push, 1)
+struct UdpPacket {
+    uint32_t id;
+    uint8_t  size;          
+    uint8_t  data[64];     
+};
+#pragma pack(pop)
+
+void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs) {
+  if((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != RESET) {
+	  canfd1->rx_interrupt_task();
+  }
+}
+
+extern "C" void StartReceiveTask(void const * argument)
+{
+  while(!socket_ready) osDelay(100);
+
+  while(1) {
+    if(canfd1->rx_available() > 0) {
+      CANFD_Frame rx_data;
+      UdpPacket tx_packet;
+      canfd1->rx(rx_data);
+      tx_packet.id = rx_data.id;
+      tx_packet.size = rx_data.size;
+      memcpy(tx_packet.data, rx_data.data, 64);
+
+      lwip_sendto(socket, (uint8_t*) &tx_packet, sizeof(tx_packet), 0, (struct sockaddr*) &txAddr, sizeof(txAddr)); //受信したら送信する
+    }
+    osDelay(10);
+  }
+}
 
 extern "C" void StartDefaultTask(void const * argument)
 {
@@ -39,9 +74,9 @@ extern "C" void StartDefaultTask(void const * argument)
   uint8_t rxbuf[16];
   uint8_t txbuf[20] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20};
   //アドレスを宣言
-  struct sockaddr_in rxAddr,txAddr;
   //ソケットを作成
-  int socket = lwip_socket(AF_INET, SOCK_DGRAM, 0);
+  socket = lwip_socket(AF_INET, SOCK_DGRAM, 0);
+  socket_ready = true;
   //アドレスのメモリを確保
   memset((char*) &txAddr, 0, sizeof(txAddr));
   memset((char*) &rxAddr, 0, sizeof(rxAddr));
@@ -66,7 +101,5 @@ extern "C" void StartDefaultTask(void const * argument)
 	  test.size = 32;
 	  memset(test.data, 0, 64);
 	  canfd1->tx(test);
-    lwip_sendto(socket, (uint8_t*) txbuf, sizeof(txbuf), 0, (struct sockaddr*) &txAddr, sizeof(txAddr)); //受信したら送信する
   }
-  /* USER CODE END 5 */
 }
