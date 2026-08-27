@@ -30,8 +30,16 @@ struct UdpPacket {
 #pragma pack(pop)
 
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs) {
-  if((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != RESET) {
-	  canfd1->rx_interrupt_task();
+  if (hfdcan->Instance == FDCAN1) {
+    if((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != RESET) {
+	    canfd1->rx_interrupt_task();
+    }
+  }
+  
+  if (hfdcan->Instance == FDCAN3) {
+    if((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != RESET) {
+	    canfd2->rx_interrupt_task();
+    }   
   }
 }
 
