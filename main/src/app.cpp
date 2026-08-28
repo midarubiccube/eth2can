@@ -24,7 +24,7 @@ struct sockaddr_in rxAddr,txAddr;
 #pragma pack(push, 1)
 struct UdpPacket {
     uint32_t id;
-    uint8_t  size;          
+    uint32_t  size;          
     uint8_t  data[64];     
 };
 #pragma pack(pop)
@@ -50,12 +50,22 @@ extern "C" void StartReceiveTask(void const * argument)
   while(1) {
     if(canfd1->rx_available() > 0) {
       CANFD_Frame rx_data;
+
       UdpPacket tx_packet;
       canfd1->rx(rx_data);
       tx_packet.id = rx_data.id;
       tx_packet.size = rx_data.size;
       memcpy(tx_packet.data, rx_data.data, 64);
 
+      lwip_sendto(socket, (uint8_t*) &tx_packet, sizeof(tx_packet), 0, (struct sockaddr*) &txAddr, sizeof(txAddr)); //受信したら送信する
+    }
+    if (canfd2->rx_available() > 0) {
+      CANFD_Frame rx_data;
+      UdpPacket tx_packet;
+      canfd2->rx(rx_data);
+      tx_packet.id = rx_data.id;
+      tx_packet.size = rx_data.size;
+      memcpy(tx_packet.data, rx_data.data, rx_data.size);
       lwip_sendto(socket, (uint8_t*) &tx_packet, sizeof(tx_packet), 0, (struct sockaddr*) &txAddr, sizeof(txAddr)); //受信したら送信する
     }
     osDelay(10);
@@ -104,10 +114,14 @@ extern "C" void StartDefaultTask(void const * argument)
   for(;;)
   {
     n = lwip_recvfrom(socket, (uint8_t*) rxbuf, sizeof(rxbuf), (int) NULL, (struct sockaddr*) &rxAddr, &len); //受信処理(blocking)
-    CANFD_Frame test;
-	  test.id=10;
-	  test.size = 32;
-	  memset(test.data, 0, 64);
-	  canfd1->tx(test);
+    if (n != sizeof(UdpPacket))
+    {
+      UdpPacket& packet = (UdpPacket&)rxbuf;
+      CANFD_Frame test;
+	    test.id = packet.id;
+	    test.size = packet.size;
+	    memcpy(test.data, packet.data, (uint8_t)packet.size);
+	    canfd2->tx(test);
+    }
   }
 }
