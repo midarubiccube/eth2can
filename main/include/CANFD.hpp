@@ -23,6 +23,8 @@ private:
 	uint32_t tail = 0;
 	FDCAN_FilterTypeDef filter_;
 
+
+
 public:
 	CANFD(FDCAN_HandleTypeDef *can) : fdcan_(can)
 	{
@@ -44,29 +46,11 @@ public:
            (byte <= 32) ? (byte - 24 + 7) / 8 + 12 :
            (byte - 32 + 15) / 16 + 13;
 	}
-	static inline uint8_t dlc2len(uint32_t dlc){
-    static const uint8_t dlc_to_len[16] = {
-        0,   // DLC 0
-        1,   // DLC 1
-        2,   // DLC 2
-        3,   // DLC 3
-        4,   // DLC 4
-        5,   // DLC 5
-        6,   // DLC 6
-        7,   // DLC 7
-        8,   // DLC 8
-        12,  // DLC 9
-        16,  // DLC 10
-        20,  // DLC 11
-        24,  // DLC 12
-        32,  // DLC 13
-        48,  // DLC 14
-        64   // DLC 15
-    };
 
-    if (dlc > 15)
-        return 0;
-
-    return dlc_to_len[dlc];
+	uint8_t dlc2len(uint32_t dlc)
+	{
+    	static const uint8_t dlc_to_len[16] = {0,1,2,3,4,5,6,7,9,12,16, 20,24,32,48,64};
+    	if (dlc > 15) return 0;
+    	return dlc_to_len[dlc];
 	}
 };

@@ -13,6 +13,8 @@
 #define F7_PORT 4001
 #define PC_PORT 4001
 
+extern osTimerId_t ReceivetimerHandle;
+
 FullColorLED led{&htim1, TIM_CHANNEL_1};
 CANFD* canfd1;
 CANFD* canfd2;
@@ -38,37 +40,30 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
   
   if (hfdcan->Instance == FDCAN3) {
     if((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != RESET) {
-	    canfd2->rx_interrupt_task();
-    }   
+      canfd2->rx_interrupt_task();
+    } 
   }
 }
 
-extern "C" void StartReceiveTask(void const * argument)
+extern "C" void ReceiveCallback(void const * argument)
 {
-  while(!socket_ready) osDelay(100);
-
-  while(1) {
-    if(canfd1->rx_available() > 0) {
-      CANFD_Frame rx_data;
-
-      UdpPacket tx_packet;
-      canfd1->rx(rx_data);
-      tx_packet.id = rx_data.id;
-      tx_packet.size = rx_data.size;
-      memcpy(tx_packet.data, rx_data.data, 64);
-
-      lwip_sendto(socket, (uint8_t*) &tx_packet, sizeof(tx_packet), 0, (struct sockaddr*) &txAddr, sizeof(txAddr)); //受信したら送信する
-    }
-    if (canfd2->rx_available() > 0) {
-      CANFD_Frame rx_data;
-      UdpPacket tx_packet;
-      canfd2->rx(rx_data);
-      tx_packet.id = rx_data.id;
-      tx_packet.size = rx_data.size;
-      memcpy(tx_packet.data, rx_data.data, rx_data.size);
-      lwip_sendto(socket, (uint8_t*) &tx_packet, sizeof(tx_packet), 0, (struct sockaddr*) &txAddr, sizeof(txAddr)); //受信したら送信する
-    }
-    osDelay(10);
+  while(canfd1->rx_available() > 0) {
+    CANFD_Frame rx_data;
+    UdpPacket tx_packet;
+    canfd1->rx(rx_data);
+    tx_packet.id = rx_data.id;
+    tx_packet.size = rx_data.size;
+    memcpy(tx_packet.data, rx_data.data, 64);
+    lwip_sendto(socket, (uint8_t*) &tx_packet, sizeof(tx_packet), 0, (struct sockaddr*) &txAddr, sizeof(txAddr)); //受信したら送信する
+  }
+  while (canfd2->rx_available() > 0) {
+    CANFD_Frame rx_data;
+    UdpPacket tx_packet;
+    canfd2->rx(rx_data);
+    tx_packet.id = rx_data.id;
+    tx_packet.size = rx_data.size;
+    memcpy(tx_packet.data, rx_data.data, rx_data.size);
+    lwip_sendto(socket, (uint8_t*) &tx_packet, sizeof(tx_packet), 0, (struct sockaddr*) &txAddr, sizeof(txAddr)); //受信したら送信する
   }
 }
 
@@ -110,6 +105,8 @@ extern "C" void StartDefaultTask(void const * argument)
   (void)lwip_bind(socket, (struct sockaddr*)&rxAddr, sizeof(rxAddr)); //IPアドレスとソケットを紐付けて受信をできる状態に
   socklen_t n; //受信したデータのサイズ
   socklen_t len = sizeof(rxAddr); //rxAddrのサイズ
+
+  osTimerStart(ReceivetimerHandle, 1);
   /* Infinite loop */
   for(;;)
   {
