@@ -23,6 +23,8 @@ bool socket_ready = false;
 
 struct sockaddr_in rxAddr,txAddr;
 
+uint8_t canid_map[16][16];
+
 #pragma pack(push, 1)
 struct UdpPacket {
     uint32_t id;
@@ -51,6 +53,9 @@ extern "C" void ReceiveCallback(void const * argument)
     CANFD_Frame rx_data;
     UdpPacket tx_packet;
     canfd1->rx(rx_data);
+       if (rx_data.is_remote) {
+      canid_map[(rx_data.id>>4) & 0xf][(rx_data.id) & 0xf] = 1;
+    }
     tx_packet.id = rx_data.id;
     tx_packet.size = rx_data.size;
     memcpy(tx_packet.data, rx_data.data, 64);
@@ -60,6 +65,9 @@ extern "C" void ReceiveCallback(void const * argument)
     CANFD_Frame rx_data;
     UdpPacket tx_packet;
     canfd2->rx(rx_data);
+    if (rx_data.is_remote) {
+      canid_map[(rx_data.id>>4) & 0xf][(rx_data.id) & 0xf] = 2;
+    }
     tx_packet.id = rx_data.id;
     tx_packet.size = rx_data.size;
     memcpy(tx_packet.data, rx_data.data, rx_data.size);
@@ -114,11 +122,15 @@ extern "C" void StartDefaultTask(void const * argument)
     if (n != sizeof(UdpPacket))
     {
       UdpPacket& packet = (UdpPacket&)rxbuf;
-      CANFD_Frame test;
-	    test.id = packet.id;
-	    test.size = packet.size;
-	    memcpy(test.data, packet.data, (uint8_t)packet.size);
-	    canfd2->tx(test);
+      CANFD_Frame can_tx;
+	    can_tx.id = packet.id;
+	    can_tx.size = packet.size;
+	    memcpy(can_tx.data, packet.data, (uint8_t)packet.size);
+      if (canid_map[(packet.id>>4) & 0xf][(packet.id) & 0xf] == 1) {
+        canfd1->tx(can_tx);
+      } else if (canid_map[(packet.id>>4) & 0xf][(packet.id) & 0xf] == 2) {
+        canfd2->tx(can_tx);
+      }
     }
   }
 }
