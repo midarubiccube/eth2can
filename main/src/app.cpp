@@ -49,29 +49,31 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 
 extern "C" void ReceiveCallback(void const * argument)
 {
-  while(canfd1->rx_available() > 0) {
+  if (canfd1->rx_available() > 0) {
     CANFD_Frame rx_data;
-    UdpPacket tx_packet;
+    UdpPacket tx_packet{};
     canfd1->rx(rx_data);
-       if (rx_data.is_remote) {
+    if (rx_data.is_remote) {
       canid_map[(rx_data.id>>4) & 0xf][(rx_data.id) & 0xf] = 1;
+    } else {
+      tx_packet.id = rx_data.id;
+      tx_packet.size = rx_data.size;
+      memcpy(tx_packet.data, rx_data.data, rx_data.size);
+      lwip_sendto(socket, (uint8_t*) &tx_packet, sizeof(tx_packet), 0, (struct sockaddr*) &txAddr, sizeof(txAddr)); //受信したら送信する
     }
-    tx_packet.id = rx_data.id;
-    tx_packet.size = rx_data.size;
-    memcpy(tx_packet.data, rx_data.data, 64);
-    lwip_sendto(socket, (uint8_t*) &tx_packet, sizeof(tx_packet), 0, (struct sockaddr*) &txAddr, sizeof(txAddr)); //受信したら送信する
   }
   while (canfd2->rx_available() > 0) {
     CANFD_Frame rx_data;
-    UdpPacket tx_packet;
+    UdpPacket tx_packet{};
     canfd2->rx(rx_data);
     if (rx_data.is_remote) {
       canid_map[(rx_data.id>>4) & 0xf][(rx_data.id) & 0xf] = 2;
+    } else {
+      tx_packet.id = rx_data.id;
+      tx_packet.size = rx_data.size;
+      memcpy(tx_packet.data, rx_data.data, tx_packet.size);
+      lwip_sendto(socket, (uint8_t*) &tx_packet, sizeof(tx_packet), 0, (struct sockaddr*) &txAddr, sizeof(txAddr)); //受信したら送信する
     }
-    tx_packet.id = rx_data.id;
-    tx_packet.size = rx_data.size;
-    memcpy(tx_packet.data, rx_data.data, rx_data.size);
-    lwip_sendto(socket, (uint8_t*) &tx_packet, sizeof(tx_packet), 0, (struct sockaddr*) &txAddr, sizeof(txAddr)); //受信したら送信する
   }
 }
 
@@ -86,16 +88,13 @@ extern "C" void StartDefaultTask(void const * argument)
 
   canfd2 = new CANFD(&hfdcan3);
 	canfd2->start();
-
+  
   led.start();
   led.set_rgb(255, 255, 255);
 
-  /* USER CODE BEGIN 5 */
   //データを格納する配列
-  uint8_t rxbuf[16];
-  uint8_t txbuf[20] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20};
-  //アドレスを宣言
-  //ソケットを作成
+  uint8_t rxbuf[sizeof(UdpPacket)];
+
   socket = lwip_socket(AF_INET, SOCK_DGRAM, 0);
   socket_ready = true;
   //アドレスのメモリを確保
@@ -119,7 +118,7 @@ extern "C" void StartDefaultTask(void const * argument)
   for(;;)
   {
     n = lwip_recvfrom(socket, (uint8_t*) rxbuf, sizeof(rxbuf), (int) NULL, (struct sockaddr*) &rxAddr, &len); //受信処理(blocking)
-    if (n != sizeof(UdpPacket))
+    if (n == sizeof(UdpPacket))
     {
       UdpPacket& packet = (UdpPacket&)rxbuf;
       CANFD_Frame can_tx;

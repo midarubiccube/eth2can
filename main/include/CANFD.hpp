@@ -2,8 +2,8 @@
 
 #include "fdcan.h"
 
-#define CAN_RX_BUFF_N 16
-#define CAN_RX_BUFF_AND 0xF
+#define CAN_RX_BUFF_N 256
+#define CAN_RX_BUFF_AND 0xFF
 
 struct CANFD_Frame{
 	uint32_t id=0;
@@ -22,9 +22,6 @@ private:
 	uint32_t head = 0;
 	uint32_t tail = 0;
 	FDCAN_FilterTypeDef filter_;
-
-
-
 public:
 	CANFD(FDCAN_HandleTypeDef *can) : fdcan_(can)
 	{

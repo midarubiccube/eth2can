@@ -29,7 +29,6 @@
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
-typedef StaticTimer_t osStaticTimerDef_t;
 /* USER CODE BEGIN PTD */
 
 /* USER CODE END PTD */
@@ -57,11 +56,8 @@ const osThreadAttr_t defaultTask_attributes = {
 };
 /* Definitions for Receivetimer */
 osTimerId_t ReceivetimerHandle;
-osStaticTimerDef_t ReceivetimerControlBlock;
 const osTimerAttr_t Receivetimer_attributes = {
-  .name = "Receivetimer",
-  .cb_mem = &ReceivetimerControlBlock,
-  .cb_size = sizeof(ReceivetimerControlBlock),
+  .name = "Receivetimer"
 };
 
 /* Private function prototypes -----------------------------------------------*/
