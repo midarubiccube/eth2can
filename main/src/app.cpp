@@ -8,6 +8,8 @@
 #include "FullColorLED.hpp"
 #include "CANFD.hpp"
 
+#include "UDPPacket_format.h"
+
 #define F7_ADDR "192.168.10.103"
 #define PC_ADDR "192.168.10.102"
 #define F7_PORT 4001
@@ -15,23 +17,15 @@
 
 extern osTimerId_t ReceivetimerHandle;
 
+int socket;
+bool socket_ready = false;
+struct sockaddr_in rxAddr,txAddr;
+
 FullColorLED led{&htim1, TIM_CHANNEL_1};
 CANFD* canfd1;
 CANFD* canfd2;
-int socket;
-bool socket_ready = false;
-
-struct sockaddr_in rxAddr,txAddr;
-
 uint8_t canid_map[16][16];
 
-#pragma pack(push, 1)
-struct UdpPacket {
-    uint32_t id;
-    uint32_t  size;          
-    uint8_t  data[64];     
-};
-#pragma pack(pop)
 
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs) {
   if (hfdcan->Instance == FDCAN1) {
@@ -82,6 +76,7 @@ extern "C" void StartDefaultTask(void const * argument)
   /* init code for LWIP */
   MX_LWIP_Init();
   MX_USB_DEVICE_Init();
+
   
   canfd1 = new CANFD(&hfdcan1);
 	canfd1->start();
@@ -91,6 +86,13 @@ extern "C" void StartDefaultTask(void const * argument)
   
   led.start();
   led.set_rgb(255, 255, 255);
+
+  CANFD_Frame remote_frame;
+  remote_frame.id = 0x00000000;
+  remote_frame.size = 0;
+  remote_frame.is_remote = true;  
+  canfd1->tx(remote_frame);
+  canfd2->tx(remote_frame);
 
   //データを格納する配列
   uint8_t rxbuf[sizeof(UdpPacket)];
@@ -110,17 +112,16 @@ extern "C" void StartDefaultTask(void const * argument)
   txAddr.sin_addr.s_addr = inet_addr(PC_ADDR); //アドレスの設定
   txAddr.sin_port = lwip_htons(PC_PORT); //ポートの指定
   (void)lwip_bind(socket, (struct sockaddr*)&rxAddr, sizeof(rxAddr)); //IPアドレスとソケットを紐付けて受信をできる状態に
-  socklen_t n; //受信したデータのサイズ
   socklen_t len = sizeof(rxAddr); //rxAddrのサイズ
 
   osTimerStart(ReceivetimerHandle, 1);
   /* Infinite loop */
   for(;;)
   {
-    n = lwip_recvfrom(socket, (uint8_t*) rxbuf, sizeof(rxbuf), (int) NULL, (struct sockaddr*) &rxAddr, &len); //受信処理(blocking)
-    if (n == sizeof(UdpPacket))
-    {
-      UdpPacket& packet = (UdpPacket&)rxbuf;
+    lwip_recvfrom(socket, (uint8_t*) rxbuf, sizeof(rxbuf), (int) NULL, (struct sockaddr*) &rxAddr, &len); //受信処理(blocking)
+    UdpPacket& packet = (UdpPacket&)rxbuf;
+    if (memcmp(packet.header, "CAN", 3) == 0)
+    { 
       CANFD_Frame can_tx;
 	    can_tx.id = packet.id;
 	    can_tx.size = packet.size;

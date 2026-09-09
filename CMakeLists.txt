@@ -20,6 +20,7 @@ set(Application_Src
 
 set(Include_Dirs
     ${CMAKE_SOURCE_DIR}/main/include
+    ${CMAKE_SOURCE_DIR}/main/format/include
 )
 
 # Define the build type
