@@ -46,6 +46,10 @@ extern "C" void ReceiveCallback(void const * argument)
   if (canfd1->rx_available() > 0) {
     CANFD_Frame rx_data;
     UdpPacket tx_packet{};
+    tx_packet.header[0] = 'C';
+    tx_packet.header[1] = 'A';
+    tx_packet.header[2] = 'N';
+
     canfd1->rx(rx_data);
     if (rx_data.is_remote) {
       canid_map[(rx_data.id>>4) & 0xf][(rx_data.id) & 0xf] = 1;
@@ -59,6 +63,10 @@ extern "C" void ReceiveCallback(void const * argument)
   while (canfd2->rx_available() > 0) {
     CANFD_Frame rx_data;
     UdpPacket tx_packet{};
+    tx_packet.header[0] = 'C';
+    tx_packet.header[1] = 'A';
+    tx_packet.header[2] = 'N';
+
     canfd2->rx(rx_data);
     if (rx_data.is_remote) {
       canid_map[(rx_data.id>>4) & 0xf][(rx_data.id) & 0xf] = 2;
