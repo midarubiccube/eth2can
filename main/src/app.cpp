@@ -9,6 +9,7 @@
 #include "CANFD.hpp"
 
 #include "UDPPacket_format.h"
+#include "ID_format.h"
 
 #define F7_ADDR "192.168.10.103"
 #define PC_ADDR "192.168.10.102"
@@ -26,6 +27,7 @@ CANFD* canfd1;
 CANFD* canfd2;
 uint8_t canid_map[16][16];
 
+ID own_id;
 
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs) {
   if (hfdcan->Instance == FDCAN1) {
@@ -52,6 +54,11 @@ extern "C" void ReceiveCallback(void const * argument)
 
     canfd1->rx(rx_data);
     if (rx_data.is_remote) {
+      CANFD_Frame remote_frame; 
+      remote_frame.id = rx_data.id;
+      remote_frame.size = 0;
+      remote_frame.is_remote = true;
+      canfd1->tx(remote_frame);
       canid_map[(rx_data.id>>4) & 0xf][(rx_data.id) & 0xf] = 1;
     } else {
       tx_packet.id = rx_data.id;
@@ -69,6 +76,11 @@ extern "C" void ReceiveCallback(void const * argument)
 
     canfd2->rx(rx_data);
     if (rx_data.is_remote) {
+      CANFD_Frame remote_frame; 
+      remote_frame.id = rx_data.id;
+      remote_frame.size = 0;
+      remote_frame.is_remote = true;
+      canfd2->tx(remote_frame);
       canid_map[(rx_data.id>>4) & 0xf][(rx_data.id) & 0xf] = 2;
     } else {
       tx_packet.id = rx_data.id;
@@ -95,13 +107,15 @@ extern "C" void StartDefaultTask(void const * argument)
   led.start();
   led.set_rgb(255, 255, 255);
 
+  own_id.fields.board_num = 0x0;
+
   CANFD_Frame remote_frame;
   remote_frame.id = 0x00000000;
   remote_frame.size = 0;
   remote_frame.is_remote = true;  
   canfd1->tx(remote_frame);
   canfd2->tx(remote_frame);
-
+  
   //データを格納する配列
   uint8_t rxbuf[sizeof(UdpPacket)];
 
